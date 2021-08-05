@@ -25,7 +25,7 @@ def parseAll(commands: list, folderpath: Path, commandlist: dict) -> dict:
         if filename.endswith(".ps1"):
             scriptName = str(filename)
             filepath = os.path.join(folderpath, filename)
-            with open(filepath, encoding="utf8") as f:
+            with open(filepath, 'rb') as f:
                 read_data = f.read()
                 commandlist[scriptName] = {}                
                 for command in commands:
