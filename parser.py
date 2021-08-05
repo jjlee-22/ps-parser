@@ -3,7 +3,7 @@ import csv
 import re
 import json
 import argparse
-import pandas as pd
+import ast
 
 from pathlib import Path
 from os import path
@@ -11,12 +11,15 @@ from os import path
 def __init__(self) -> None:
     pass
 
-def readCommands(file: Path) -> str:
-    with open(file , "r+") as f:
+def readCommands(file: Path) -> list:
+    with open(file) as f:
         data = json.load(f)
-        return data
+        tmpList = list() 
+        for name in data:
+            tmpList.append(name['Name'])
+        return tmpList 
 
-def parseAll(commands: str, folderpath: Path, commandlist: dict) -> dict:
+def parseAll(commands: list, folderpath: Path, commandlist: dict) -> dict:
 
     for filename in os.listdir(folderpath):
         if filename.endswith(".ps1"):
@@ -24,19 +27,17 @@ def parseAll(commands: str, folderpath: Path, commandlist: dict) -> dict:
             filepath = os.path.join(folderpath, filename)
             with open(filepath, encoding="utf8") as f:
                 read_data = f.read()
-                commandlist[scriptName] = {}
+                commandlist[scriptName] = {}                
                 for command in commands:
+                    commandlist[scriptName][command] = 1 
                     for scriptWord in read_data.split():
-                        if scriptWord == command['Name']:
-                            try:
-                                commandlist[scriptName][scriptWord] += 1
-                            except:
-                                commandlist[scriptName][scriptWord] = 1
+                        if scriptWord == command:
+                            commandlist[scriptName][scriptWord] += 1
     
     return commandlist
                 
 
-def parseSingle(commands: str, folderpath: Path, filename: Path, commandlist: dict) -> dict:
+def parseSingle(commands: list, folderpath: Path, filename: Path, commandlist: dict) -> dict:
 
     filepath = os.path.join(folderpath, filename)
 
@@ -47,8 +48,9 @@ def parseSingle(commands: str, folderpath: Path, filename: Path, commandlist: di
         commandlist[scriptName] = {}
         
         for command in commands:
+            commandlist[scriptName][command] = 1
             for scriptWord in read_data.split():
-                if scriptWord == command['Name']:
+                if scriptWord == command:
                     try:
                         commandlist[scriptName][scriptWord] += 1
                     except:
@@ -56,7 +58,7 @@ def parseSingle(commands: str, folderpath: Path, filename: Path, commandlist: di
 
     return commandlist
 
-def findCommands(commands: str, folderpath: Path, filename: Path) -> list:
+def findCommands(commands: list, folderpath: Path, filename: Path) -> list:
     commandlist = dict()
 
     if filename:
@@ -66,9 +68,14 @@ def findCommands(commands: str, folderpath: Path, filename: Path) -> list:
     
     return commandlist
 
-def convertToCSV():
-    df = pd.read_json('output.json')
-    df.to_csv('output.csv', index=None)
+def convertToCSV(commandlist: dict, commands: list) -> None:
+    commands.insert(0, 'FileName')
+
+    with open('output.csv', 'w', newline='') as csvfile:
+        w = csv.DictWriter(csvfile, commands)
+        w.writeheader()
+        for k in commandlist:
+            w.writerow({command: commandlist[k].get(command) or k for command in commands})
 
 def main():
     parser = argparse.ArgumentParser(description="Parses PowerShell script from the selected folder")
@@ -92,7 +99,7 @@ def main():
     with open("output.json", 'w') as outfile:
         json.dump(commandlist, outfile)
 
-    convertToCSV()
+    convertToCSV(commandlist, commands)
 
 if __name__ == "__main__":
     main()
